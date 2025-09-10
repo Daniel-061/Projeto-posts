@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, redirect, url_for, Blueprint
+#from CRUD import crud
 from models.post import Posts
 from models.comment import Comment
 from extensions import db
@@ -6,8 +7,7 @@ from extensions import db
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-bp = Blueprint('posts', __name__, url_prefix='/posts')
+#app.register_blueprint(crud)
 
 db.init_app(app)
 
@@ -15,10 +15,10 @@ db.init_app(app)
 # Postar
 @app.route('/postar', methods=['POST'])
 def postar():
-    titulo = request.json.get('titulo')
-    subtitulo = request.json.get('subtitulo')
-    foto = request.json.get('foto')
-    db.session.add(Posts(titulo, subtitulo, foto))
+    title = request.json.get('title')
+    subtitle = request.json.get('subtitle')
+    photo = request.json.get('photo')
+    db.session.add(Posts(title, subtitle, photo))
     db.session.commit()
     return {"message": "Post criado com sucesso!"}, 201
 
@@ -48,15 +48,19 @@ def detalhe(id):
     })
 
 # Deletar um post
-@app.route('/delete/posts/<int:id>')
-def deletar(id):
-    Decision = input(bool(f'Você tem certeza que deseja deletar {Posts.query.get(id)}'))
-    if Decision:
-        db.session.delete(Posts.query.filter_by(id=id).first())
-        db.session.delete(Comment.query.filter_by(Post_id=id).all())
-        db.session.commit()
-    else:
-        return '<p> ação cancelada com sucesso!</p>', redirect(url_for('/posts'))
+@app.route('/delete/posts/<int:_id>', methods=['DELETE'])
+def deletar_post(_id):
+    post = Posts.query.filter_by(id=_id).first()
+    if not post:
+        return {"message": "Post não encontrado"}, 404  # Evita erro
+
+    # Deleta comentários relacionados
+    Comment.query.filter_by(post_id=_id).delete()
+
+    db.session.delete(post)
+    db.session.commit()
+    return {"message": "Deletado com sucesso!"}, 200
+
 
 if __name__ == '__main__':
     with app.app_context():
